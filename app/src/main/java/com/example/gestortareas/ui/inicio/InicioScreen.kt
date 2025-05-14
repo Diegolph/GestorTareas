@@ -20,7 +20,7 @@ import com.example.gestortareas.data.database.AppDatabase
 import com.example.gestortareas.data.repository.UsuarioRepository
 import kotlinx.coroutines.flow.collectLatest
 import androidx.fragment.app.FragmentActivity
-
+import com.example.gestortareas.data.preferences.PreferenciasUsuario
 
 
 @Composable
@@ -28,18 +28,16 @@ fun InicioScreen(onLoginExitoso: () -> Unit) {
     val context = LocalContext.current
     val activity = context as? FragmentActivity
 
-    // Instanciar DB y ViewModel con Factory
     val db = remember { AppDatabase.getDatabase(context) }
     val repository = remember { UsuarioRepository(db.usuarioDao()) }
     val viewModel: UsuarioViewModel = viewModel(factory = UsuarioViewModelFactory(repository))
 
-    // Estados de UI
+    // Estados
     var modoRegistro by remember { mutableStateOf(false) }
     var usuario by remember { mutableStateOf("") }
     var contrasena by remember { mutableStateOf("") }
     var confirmar by remember { mutableStateOf("") }
 
-    // Mensaje desde ViewModel
     LaunchedEffect(viewModel.mensaje) {
         viewModel.mensaje.collectLatest { mensaje ->
             if (!mensaje.isNullOrEmpty()) {
@@ -47,6 +45,7 @@ fun InicioScreen(onLoginExitoso: () -> Unit) {
                 viewModel.limpiarMensaje()
 
                 if (mensaje.contains("¡Bienvenido", ignoreCase = true)) {
+                    PreferenciasUsuario(context).guardarUsuario(usuario)
                     onLoginExitoso()
                 }
                 if (mensaje.contains("registrado con éxito", ignoreCase = true)) {

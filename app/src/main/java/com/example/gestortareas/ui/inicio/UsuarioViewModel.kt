@@ -50,7 +50,7 @@ class UsuarioViewModel(private val repository: UsuarioRepository) : ViewModel() 
                 _mensaje.value = "Contraseña incorrecta"
             } else {
                 _mensaje.value = "¡Bienvenido, $nombre!"
-                // Aquí podrías activar la siguiente pantalla más adelante
+                //
             }
         }
     }

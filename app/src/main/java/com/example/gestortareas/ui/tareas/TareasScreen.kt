@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,14 +19,38 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.navigation.NavHostController
+import com.example.gestortareas.data.model.Tarea
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.gestortareas.data.database.AppDatabase
+import com.example.gestortareas.data.repository.TareaRepository
+import com.example.gestortareas.data.dao.TareaDao
 
+
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TareasScreen() {
+fun TareasScreen(navController: NavHostController, usuarioActual: String) {
     val context = LocalContext.current
-    var tareas by remember { mutableStateOf(listOf<Tarea>()) }
+    val db = remember { AppDatabase.getDatabase(context) }
+    val tareaRepository = remember { TareaRepository(db.tareaDao()) }
+    val viewModel: TareaViewModel = viewModel(
+        factory = TareaViewModelFactory(tareaRepository, usuarioActual)
+    )
+    val tareas by viewModel.tareas.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Pendientes") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                    }
+                }
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = { showDialog = true }) {
                 Text("+")
@@ -50,12 +75,10 @@ fun TareasScreen() {
                     TareaItem(
                         tarea = tarea,
                         onEditar = { nuevaTarea ->
-                            tareas = tareas.map {
-                                if (it.id == nuevaTarea.id) nuevaTarea else it
-                            }
+                            viewModel.actualizarTarea(nuevaTarea)
                         },
                         onEliminar = {
-                            tareas = tareas.filter { it.id != tarea.id }
+                            viewModel.eliminarTarea(tarea)
                         }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -65,8 +88,9 @@ fun TareasScreen() {
 
         if (showDialog) {
             NuevaTareaDialog(
+                usuario = usuarioActual,
                 onGuardar = { nueva ->
-                    tareas = tareas + nueva
+                    viewModel.agregarTarea(nueva.texto, nueva.fecha)
                     showDialog = false
                 },
                 onCancelar = { showDialog = false }
@@ -76,11 +100,7 @@ fun TareasScreen() {
     }
 }
 
-data class Tarea(
-    val id: String = UUID.randomUUID().toString(),
-    val texto: String,
-    val fecha: String
-)
+
 
 @Composable
 fun TareaItem(
@@ -134,6 +154,7 @@ fun TareaItem(
 
 @Composable
 fun NuevaTareaDialog(
+    usuario: String,
     onGuardar: (Tarea) -> Unit,
     onCancelar: () -> Unit
 ) {
@@ -155,7 +176,7 @@ fun NuevaTareaDialog(
                 Spacer(modifier = Modifier.height(8.dp))
                 Box(modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {
+                    .  clickable {
                         val cal = Calendar.getInstance()
                         DatePickerDialog(
                             context,
@@ -184,7 +205,7 @@ fun NuevaTareaDialog(
         confirmButton = {
             TextButton(onClick = {
                 if (texto.isNotBlank() && fecha.isNotBlank()) {
-                    onGuardar(Tarea(texto = texto, fecha = fecha))
+                    onGuardar(Tarea(texto = texto, fecha = fecha, usuarioNombre = usuario))
                 } else {
                     Toast.makeText(context, "Completa todos los campos", Toast.LENGTH_SHORT).show()
                 }
